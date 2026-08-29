@@ -26,16 +26,21 @@ private const val SYSTEM_PADDING_FRACTION = 0.01f
 // so a piece never loses a page over a heuristic misfire.
 fun processScorePage(context: Context, sourceUri: Uri): List<Uri> {
     val decoded = decodeSampledBitmap(context, sourceUri, MAX_PROCESS_DIMENSION) ?: return listOf(sourceUri)
-    val enhanced = sharpen(enhanceContrast(decoded), SHARPEN_AMOUNT)
-    val bands = detectSystemBands(enhanced)
+    val contrasted = enhanceContrast(decoded)
+    decoded.recycle()
+    val enhanced = sharpen(contrasted, SHARPEN_AMOUNT)
+    if (enhanced !== contrasted) contrasted.recycle()
 
+    val bands = detectSystemBands(enhanced)
     val dir = File(context.cacheDir, "score_systems").apply { mkdirs() }
     val uris = bands.mapIndexed { index, (startY, endY) ->
         val crop = Bitmap.createBitmap(enhanced, 0, startY, enhanced.width, endY - startY)
         val file = File(dir, "system_${System.currentTimeMillis()}_$index.jpg")
         FileOutputStream(file).use { out -> crop.compress(Bitmap.CompressFormat.JPEG, 90, out) }
+        crop.recycle()
         FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
     }
+    enhanced.recycle()
     return uris.ifEmpty { listOf(sourceUri) }
 }
 
