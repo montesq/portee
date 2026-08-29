@@ -11,9 +11,14 @@ import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.portee.app.BuildConfig
 import com.portee.app.data.MockData
@@ -34,6 +39,21 @@ import com.portee.app.ui.theme.Spacing
 @Composable
 fun PorteeApp(viewModel: PorteeViewModel = viewModel()) {
     val screen = viewModel.screen
+    val activity = LocalContext.current.findActivity()
+
+    DisposableEffect(screen is Screen.Practice) {
+        val window = activity?.window
+        val controller = window?.let { WindowCompat.getInsetsController(it, it.decorView) }
+        if (screen is Screen.Practice) {
+            controller?.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            controller?.hide(WindowInsetsCompat.Type.navigationBars())
+        } else {
+            controller?.show(WindowInsetsCompat.Type.navigationBars())
+        }
+        onDispose {
+            controller?.show(WindowInsetsCompat.Type.navigationBars())
+        }
+    }
 
     LaunchedEffect(Unit) {
         viewModel.checkForUpdate(BuildConfig.VERSION_CODE)
