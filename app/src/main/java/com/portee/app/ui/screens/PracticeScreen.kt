@@ -28,8 +28,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import com.portee.app.camera.rememberDecodedBitmap
+import com.portee.app.ui.components.IconOnlyButton
 import com.portee.app.ui.components.ScorePlaceholder
 import com.portee.app.ui.components.SecondaryButton
+import com.portee.app.ui.icons.PorteeIcons
 import com.portee.app.ui.theme.PorteeColors
 import com.portee.app.ui.theme.PorteeType
 import com.portee.app.ui.theme.Spacing
@@ -70,16 +72,18 @@ fun PracticeScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .clip(RoundedCornerShape(8.dp))
-                        .border(1.dp, PorteeColors.divider, RoundedCornerShape(8.dp))
-                        .clickable(
-                            enabled = pageImageUri != null,
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null,
-                            onClick = { zoomed = true },
-                        ),
+                        .border(1.dp, PorteeColors.divider, RoundedCornerShape(8.dp)),
                     contentAlignment = Alignment.Center,
                 ) {
                     ScoreStage(imageUri = pageImageUri, pages = totalPages, contentScale = ContentScale.Fit)
+                    if (pageImageUri != null) {
+                        IconOnlyButton(
+                            icon = PorteeIcons.Search,
+                            contentDescription = "Zoomer",
+                            onClick = { zoomed = true },
+                            modifier = Modifier.align(Alignment.TopEnd).padding(Spacing.space2),
+                        )
+                    }
                 }
             }
 
