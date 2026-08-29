@@ -50,6 +50,7 @@ fun PorteeApp(viewModel: PorteeViewModel = viewModel()) {
             is Screen.Practice -> {
                 val piece = viewModel.pieceById(current.pieceId)
                 PracticeScreen(
+                    imageUris = piece?.scoreImageUris ?: emptyList(),
                     currentPage = viewModel.practicePage,
                     totalPages = piece?.pages ?: 1,
                     listening = viewModel.practiceListening,
