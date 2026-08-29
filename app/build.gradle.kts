@@ -4,6 +4,10 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+// CI passes -PversionCode=<github.run_number> so each build's version code strictly
+// increases and matches the GitHub release tag (vN) the in-app updater compares against.
+val appVersionCode = (project.findProperty("versionCode") as String?)?.toIntOrNull() ?: 1
+
 android {
     namespace = "com.portee.app"
     compileSdk = 35
@@ -12,8 +16,8 @@ android {
         applicationId = "com.portee.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = appVersionCode
+        versionName = "1.0.$appVersionCode"
     }
 
     signingConfigs {
@@ -46,6 +50,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 

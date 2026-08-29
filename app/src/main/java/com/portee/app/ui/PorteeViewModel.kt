@@ -11,10 +11,14 @@ import com.portee.app.data.MockData
 import com.portee.app.data.Piece
 import com.portee.app.data.Recording
 import com.portee.app.data.Suggestion
+import com.portee.app.update.UpdateChecker
+import com.portee.app.update.UpdateInfo
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlin.random.Random
 
 const val AUTO_TURN_SPEED_MS = 2600L
@@ -57,10 +61,26 @@ class PorteeViewModel : ViewModel() {
     var recordElapsed by mutableStateOf(0)
         private set
 
+    var updateInfo by mutableStateOf<UpdateInfo?>(null)
+        private set
+
     private var practiceJob: Job? = null
     private var recordJob: Job? = null
 
     val suggestions: List<Suggestion> get() = MockData.suggestions
+
+    fun checkForUpdate(currentVersionCode: Int) {
+        viewModelScope.launch {
+            val latest = withContext(Dispatchers.IO) { UpdateChecker.fetchLatest() }
+            if (latest != null && latest.versionCode > currentVersionCode) {
+                updateInfo = latest
+            }
+        }
+    }
+
+    fun dismissUpdate() {
+        updateInfo = null
+    }
 
     val filteredPieces: List<Piece>
         get() {

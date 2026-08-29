@@ -13,14 +13,17 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.portee.app.BuildConfig
 import com.portee.app.data.MockData
 import com.portee.app.ui.components.BackHeader
 import com.portee.app.ui.components.PorteeTabBar
 import com.portee.app.ui.components.RootTab
+import com.portee.app.ui.components.UpdateDialog
 import com.portee.app.ui.screens.AddScreen
 import com.portee.app.ui.screens.DetailScreen
 import com.portee.app.ui.screens.LibraryScreen
@@ -43,6 +46,14 @@ fun PorteeApp(viewModel: PorteeViewModel = viewModel()) {
             ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         }
         onDispose { }
+    }
+
+    LaunchedEffect(Unit) {
+        viewModel.checkForUpdate(BuildConfig.VERSION_CODE)
+    }
+
+    viewModel.updateInfo?.let { info ->
+        UpdateDialog(info = info, onDismiss = viewModel::dismissUpdate)
     }
 
     Surface(color = PorteeColors.background, modifier = Modifier.fillMaxSize()) {

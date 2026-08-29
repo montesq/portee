@@ -5,6 +5,9 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -26,10 +29,19 @@ jobs:
           gradle-version: "8.9"
 
       - name: Build debug APK
-        run: gradle assembleDebug --stacktrace
+        run: gradle assembleDebug -PversionCode=${{ github.run_number }} --stacktrace
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
           name: portee-debug-apk
           path: app/build/outputs/apk/debug/*.apk
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="v${{ github.run_number }}"
+          gh release create "$TAG" app/build/outputs/apk/debug/app-debug.apk \
+            --title "Build $TAG" \
+            --notes "Build automatique depuis le commit ${{ github.sha }}."

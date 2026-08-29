@@ -29,8 +29,20 @@ En ligne de commande, une fois le wrapper généré (`gradle wrapper` si vous av
 
 Sans Android Studio ni Gradle local : chaque push sur `main` déclenche le workflow
 [`.github/workflows/android-build.yml`](.github/workflows/android-build.yml), qui compile un
-APK debug et le publie comme artefact du run (onglet *Actions* du repo) — à télécharger et
-installer directement sur un téléphone Android 8.0+.
+APK debug, le publie comme artefact du run (onglet *Actions*) **et** crée une
+[GitHub Release](https://github.com/montesq/portee/releases) taguée `vN` (N = numéro de run)
+avec l'APK attaché — à télécharger et installer directement sur un téléphone Android 8.0+.
+
+## Mise à jour automatique
+
+L'app vérifie au démarrage si une release plus récente existe (`GET /repos/montesq/portee/releases/latest`)
+et, si oui, propose de la télécharger et l'installer (`UpdateChecker` / `UpdateDialog`,
+package `com.portee.app.update`). Ça suppose :
+- le repo **public**, pour interroger l'API et télécharger l'APK sans identifiants embarqués ;
+- `versionCode` = numéro de run CI (passé via `-PversionCode=…`), comparé au tag `vN` de la
+  dernière release ;
+- l'autorisation Android "installer des applications inconnues" accordée à l'app qui déclenche
+  l'installation (demandée automatiquement au premier "Mettre à jour" si besoin).
 
 ## Limitations connues (prototype → produit réel)
 
@@ -41,7 +53,8 @@ installer directement sur un téléphone Android 8.0+.
   n'y a pas encore d'analyse audio réelle du jeu au piano.
 - **Enregistrement** : le bouton d'enregistrement simule une prise (chronomètre + score de
   qualité aléatoire) ; l'enregistrement audio réel (MediaRecorder) reste à implémenter.
-- **Import PDF/Photo** : les boutons ne font que marquer un type d'import choisi ; l'intégration
-  avec un sélecteur de fichiers/l'appareil photo et le rendu réel de la partition sont à faire.
+- **Import PDF** : le bouton ne fait que marquer un import PDF simulé ; un vrai sélecteur de
+  fichiers et le rendu du PDF restent à faire. L'import **Photo**, lui, ouvre l'appareil photo
+  réel (une ou plusieurs pages) et les photos sont affichées dans la fiche détail et en mode Jouer.
 - Les 3 suggestions de l'onglet Suggestions restent des données fixes (issues du prototype de
   design) — un vrai moteur de recommandation basé sur la bibliothèque réelle reste à faire.
