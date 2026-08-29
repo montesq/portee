@@ -184,14 +184,10 @@ class PorteeViewModel : ViewModel() {
         practicePage = 0
     }
 
-    fun nextPracticePage() {
-        val pieceId = (screen as? Screen.Practice)?.pieceId ?: return
+    fun setPracticePage(page: Int) {
+        val pieceId = (screen as? Screen.Practice)?.pieceId
         val total = pieceById(pieceId)?.pages ?: 1
-        if (practicePage < total - 1) practicePage += 1
-    }
-
-    fun prevPracticePage() {
-        if (practicePage > 0) practicePage -= 1
+        practicePage = page.coerceIn(0, total - 1)
     }
 
     // --- Record (Enregistrement) ---

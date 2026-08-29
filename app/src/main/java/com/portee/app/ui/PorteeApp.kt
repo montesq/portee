@@ -71,8 +71,7 @@ fun PorteeApp(viewModel: PorteeViewModel = viewModel()) {
                     imageUris = piece?.scoreImageUris ?: emptyList(),
                     currentPage = viewModel.practicePage,
                     totalPages = piece?.pages ?: 1,
-                    onPrevPage = viewModel::prevPracticePage,
-                    onNextPage = viewModel::nextPracticePage,
+                    onPageChange = viewModel::setPracticePage,
                     onClose = viewModel::goBack,
                 )
             }
