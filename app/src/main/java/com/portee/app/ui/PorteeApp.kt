@@ -1,6 +1,5 @@
 package com.portee.app.ui
 
-import android.content.pm.ActivityInfo
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,11 +11,9 @@ import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.portee.app.BuildConfig
 import com.portee.app.data.MockData
@@ -37,16 +34,6 @@ import com.portee.app.ui.theme.Spacing
 @Composable
 fun PorteeApp(viewModel: PorteeViewModel = viewModel()) {
     val screen = viewModel.screen
-    val activity = LocalContext.current.findActivity()
-
-    DisposableEffect(screen is Screen.Practice) {
-        activity?.requestedOrientation = if (screen is Screen.Practice) {
-            ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
-        } else {
-            ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-        }
-        onDispose { }
-    }
 
     LaunchedEffect(Unit) {
         viewModel.checkForUpdate(BuildConfig.VERSION_CODE)
@@ -64,11 +51,9 @@ fun PorteeApp(viewModel: PorteeViewModel = viewModel()) {
                     imageUris = piece?.scoreImageUris ?: emptyList(),
                     currentPage = viewModel.practicePage,
                     totalPages = piece?.pages ?: 1,
-                    listening = viewModel.practiceListening,
-                    done = viewModel.practiceDone,
-                    onBack = viewModel::goBack,
-                    onToggleListening = viewModel::toggleListening,
-                    onReset = viewModel::resetPractice,
+                    onPrevPage = viewModel::prevPracticePage,
+                    onNextPage = viewModel::nextPracticePage,
+                    onClose = viewModel::goBack,
                 )
             }
             else -> {

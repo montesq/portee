@@ -21,8 +21,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.random.Random
 
-const val AUTO_TURN_SPEED_MS = 2600L
-
 sealed class Screen {
     data object Library : Screen()
     data object Add : Screen()
@@ -49,11 +47,7 @@ class PorteeViewModel : ViewModel() {
     var addedSuggestions by mutableStateOf(setOf<String>())
         private set
 
-    var practiceListening by mutableStateOf(false)
-        private set
     var practicePage by mutableStateOf(0)
-        private set
-    var practiceDone by mutableStateOf(false)
         private set
 
     var recordActive by mutableStateOf(false)
@@ -64,7 +58,6 @@ class PorteeViewModel : ViewModel() {
     var updateInfo by mutableStateOf<UpdateInfo?>(null)
         private set
 
-    private var practiceJob: Job? = null
     private var recordJob: Job? = null
 
     val suggestions: List<Suggestion> get() = MockData.suggestions
@@ -91,18 +84,17 @@ class PorteeViewModel : ViewModel() {
 
     fun pieceById(id: String?): Piece? = pieces.find { it.id == id }
 
-    private fun clearTimers() {
-        practiceJob?.cancel(); practiceJob = null
+    private fun clearRecordTimer() {
         recordJob?.cancel(); recordJob = null
     }
 
     fun openPiece(id: String) {
-        clearTimers()
+        clearRecordTimer()
         screen = Screen.Detail(id)
     }
 
     fun goBack() {
-        clearTimers()
+        clearRecordTimer()
         screen = when (val s = screen) {
             is Screen.Practice -> Screen.Detail(s.pieceId)
             is Screen.Record -> Screen.Detail(s.pieceId)
@@ -111,7 +103,7 @@ class PorteeViewModel : ViewModel() {
     }
 
     fun setTab(tab: Screen) {
-        clearTimers()
+        clearRecordTimer()
         screen = tab
     }
 
@@ -187,49 +179,25 @@ class PorteeViewModel : ViewModel() {
     // --- Practice (Jouer) ---
 
     fun startPractice(id: String) {
-        clearTimers()
+        clearRecordTimer()
         screen = Screen.Practice(id)
         practicePage = 0
-        practiceListening = false
-        practiceDone = false
     }
 
-    fun toggleListening() {
-        if (practiceListening) {
-            clearTimers()
-            practiceListening = false
-            return
-        }
+    fun nextPracticePage() {
         val pieceId = (screen as? Screen.Practice)?.pieceId ?: return
-        practiceListening = true
-        practiceDone = false
-        practiceJob = viewModelScope.launch {
-            while (isActive) {
-                delay(AUTO_TURN_SPEED_MS)
-                val total = pieceById(pieceId)?.pages ?: 1
-                val next = practicePage + 1
-                if (next >= total) {
-                    practicePage = total - 1
-                    practiceListening = false
-                    practiceDone = true
-                    break
-                }
-                practicePage = next
-            }
-        }
+        val total = pieceById(pieceId)?.pages ?: 1
+        if (practicePage < total - 1) practicePage += 1
     }
 
-    fun resetPractice() {
-        clearTimers()
-        practicePage = 0
-        practiceDone = false
-        practiceListening = false
+    fun prevPracticePage() {
+        if (practicePage > 0) practicePage -= 1
     }
 
     // --- Record (Enregistrement) ---
 
     fun startRecord(id: String) {
-        clearTimers()
+        clearRecordTimer()
         screen = Screen.Record(id)
         recordActive = false
         recordElapsed = 0
@@ -237,7 +205,7 @@ class PorteeViewModel : ViewModel() {
 
     fun toggleRecord() {
         if (recordActive) {
-            clearTimers()
+            clearRecordTimer()
             val pieceId = (screen as? Screen.Record)?.pieceId
             val duration = MockData.fmtTime(recordElapsed)
             val quality = 68 + Random.nextInt(28)
@@ -261,6 +229,6 @@ class PorteeViewModel : ViewModel() {
     }
 
     override fun onCleared() {
-        clearTimers()
+        clearRecordTimer()
     }
 }
