@@ -15,6 +15,7 @@ data class Piece(
     val added: String,
     val pages: Int,
     val recordings: List<Recording> = emptyList(),
+    val scoreImageUris: List<String> = emptyList(),
 )
 
 data class Suggestion(

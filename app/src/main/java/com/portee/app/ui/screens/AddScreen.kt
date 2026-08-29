@@ -27,20 +27,18 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.portee.app.camera.createScorePhotoUri
-import com.portee.app.camera.decodeSampledBitmap
+import com.portee.app.camera.rememberDecodedBitmap
 import com.portee.app.data.AddForm
 import com.portee.app.data.ImportKind
 import com.portee.app.ui.components.ImportChoiceButton
@@ -51,8 +49,6 @@ import com.portee.app.ui.theme.PorteeColors
 import com.portee.app.ui.theme.PorteeType
 import com.portee.app.ui.theme.Radius
 import com.portee.app.ui.theme.Spacing
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
 @Composable
 fun AddScreen(
@@ -191,15 +187,9 @@ fun AddScreen(
 
 @Composable
 private fun PhotoThumbnail(uriString: String, onRemove: () -> Unit) {
-    val context = LocalContext.current
-    val bitmapState = produceState<androidx.compose.ui.graphics.ImageBitmap?>(initialValue = null, uriString) {
-        value = withContext(Dispatchers.IO) {
-            decodeSampledBitmap(context, Uri.parse(uriString), 200)?.asImageBitmap()
-        }
-    }
+    val bitmap = rememberDecodedBitmap(uriString, 200)
 
     Box(modifier = Modifier.size(64.dp)) {
-        val bitmap = bitmapState.value
         if (bitmap != null) {
             Image(
                 bitmap = bitmap,

@@ -1,6 +1,7 @@
 package com.portee.app.ui.components
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
@@ -13,8 +14,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.portee.app.camera.rememberDecodedBitmap
 import com.portee.app.ui.theme.PorteeColors
 import com.portee.app.ui.theme.PorteeType
 import com.portee.app.ui.theme.Radius
@@ -63,6 +66,36 @@ fun ScorePlaceholder(pages: Int, modifier: Modifier = Modifier) {
                 style = PorteeType.mono,
                 color = PorteeColors.text.copy(alpha = 0.85f),
             )
+        }
+    }
+}
+
+// Shows the real photo for the given page when one was captured, falling back to the
+// generic striped placeholder (e.g. for a PDF import, which has no page image).
+@Composable
+fun ScorePreview(imageUris: List<String>, pageIndex: Int, pages: Int, modifier: Modifier = Modifier) {
+    val uriString = imageUris.getOrNull(pageIndex)
+    if (uriString == null) {
+        ScorePlaceholder(pages = pages, modifier = modifier)
+        return
+    }
+
+    val bitmap = rememberDecodedBitmap(uriString, 1000)
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(Radius.md))
+            .border(1.dp, PorteeColors.divider, RoundedCornerShape(Radius.md)),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (bitmap != null) {
+            Image(
+                bitmap = bitmap,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
+        } else {
+            DiagonalStripes(modifier = Modifier.fillMaxSize())
         }
     }
 }

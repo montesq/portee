@@ -26,7 +26,7 @@ import com.portee.app.ui.components.GhostButton
 import com.portee.app.ui.components.LevelTag
 import com.portee.app.ui.components.PrimaryButton
 import com.portee.app.ui.components.RecordingRow
-import com.portee.app.ui.components.ScorePlaceholder
+import com.portee.app.ui.components.ScorePreview
 import com.portee.app.ui.components.SecondaryButton
 import com.portee.app.ui.theme.PorteeColors
 import com.portee.app.ui.theme.PorteeType
@@ -59,7 +59,12 @@ fun DetailScreen(
             )
         }
 
-        ScorePlaceholder(pages = piece.pages, modifier = Modifier.fillMaxWidth().height(170.dp))
+        ScorePreview(
+            imageUris = piece.scoreImageUris,
+            pageIndex = 0,
+            pages = piece.pages,
+            modifier = Modifier.fillMaxWidth().height(170.dp),
+        )
 
         Row(horizontalArrangement = Arrangement.spacedBy(Spacing.space3)) {
             PrimaryButton(

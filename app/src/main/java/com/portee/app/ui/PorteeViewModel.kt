@@ -140,6 +140,7 @@ class PorteeViewModel : ViewModel() {
             added = "Aujourd'hui",
             pages = pages,
             recordings = emptyList(),
+            scoreImageUris = if (f.importKind == ImportKind.PHOTO) f.photoUris else emptyList(),
         )
         pieces = listOf(piece) + pieces
         addForm = AddForm()
