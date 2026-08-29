@@ -184,7 +184,7 @@ class PorteeViewModel : ViewModel() {
         practicePage = 0
     }
 
-    fun setPracticePage(page: Int) {
+    fun jumpToPracticePage(page: Int) {
         val pieceId = (screen as? Screen.Practice)?.pieceId
         val total = pieceById(pieceId)?.pages ?: 1
         practicePage = page.coerceIn(0, total - 1)
