@@ -1,10 +1,13 @@
 package com.portee.app.ui
 
+import android.content.Context
+import android.net.Uri
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.portee.app.camera.processScorePage
 import com.portee.app.data.AddForm
 import com.portee.app.data.ImportKind
 import com.portee.app.data.MockData
@@ -45,6 +48,9 @@ class PorteeViewModel : ViewModel() {
         private set
 
     var addedSuggestions by mutableStateOf(setOf<String>())
+        private set
+
+    var isSubmittingPiece by mutableStateOf(false)
         private set
 
     var practicePage by mutableStateOf(0)
@@ -137,26 +143,41 @@ class PorteeViewModel : ViewModel() {
         )
     }
 
-    fun submitAdd() {
+    fun submitAdd(context: Context) {
         val f = addForm
-        if (f.title.isBlank() || f.composer.isBlank() || f.importKind == null) return
-        val pages = when (f.importKind) {
-            ImportKind.PDF -> 3
-            ImportKind.PHOTO -> f.photoUris.size.coerceAtLeast(1)
+        if (f.title.isBlank() || f.composer.isBlank() || f.importKind == null || isSubmittingPiece) return
+        isSubmittingPiece = true
+        viewModelScope.launch {
+            // Splits each scanned page into per-system images (enhanced for contrast/sharpness)
+            // so a system fills more of the screen when reading, instead of a whole cramped page.
+            val scoreImageUris = if (f.importKind == ImportKind.PHOTO) {
+                withContext(Dispatchers.IO) {
+                    f.photoUris.flatMap { uri ->
+                        processScorePage(context, Uri.parse(uri)).map { it.toString() }
+                    }
+                }
+            } else {
+                emptyList()
+            }
+            val pages = when (f.importKind) {
+                ImportKind.PDF -> 3
+                ImportKind.PHOTO -> scoreImageUris.size.coerceAtLeast(1)
+            }
+            val piece = Piece(
+                id = "p${System.currentTimeMillis()}",
+                title = f.title.trim(),
+                composer = f.composer.trim(),
+                level = f.level,
+                added = "Aujourd'hui",
+                pages = pages,
+                recordings = emptyList(),
+                scoreImageUris = scoreImageUris,
+            )
+            pieces = listOf(piece) + pieces
+            addForm = AddForm()
+            isSubmittingPiece = false
+            screen = Screen.Library
         }
-        val piece = Piece(
-            id = "p${System.currentTimeMillis()}",
-            title = f.title.trim(),
-            composer = f.composer.trim(),
-            level = f.level,
-            added = "Aujourd'hui",
-            pages = pages,
-            recordings = emptyList(),
-            scoreImageUris = if (f.importKind == ImportKind.PHOTO) f.photoUris else emptyList(),
-        )
-        pieces = listOf(piece) + pieces
-        addForm = AddForm()
-        screen = Screen.Library
     }
 
     // --- Suggestions ---

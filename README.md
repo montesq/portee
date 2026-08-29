@@ -58,7 +58,11 @@ package `com.portee.app.update`). Ça suppose :
 - **Import PDF** : le bouton ne fait que marquer un import PDF simulé ; un vrai sélecteur de
   fichiers et le rendu du PDF restent à faire. L'import **Photo**, lui, ouvre le
   [scanner de documents ML Kit](https://developers.google.com/ml-kit/vision/doc-scanner)
-  (Google Play services) : détection automatique des bords de la page, recadrage et redressement,
-  avant d'ajouter la page scannée (une ou plusieurs) à la fiche détail et au mode Jouer.
+  (Google Play services) : détection automatique des bords de la page, recadrage et redressement.
+  Chaque page scannée est ensuite découpée en systèmes (une image par ligne de portée,
+  `ScoreProcessor.kt`) via un profil de densité d'encre par ligne — une heuristique de mise en
+  page, pas de reconnaissance de notes — avec contraste/netteté renforcés, pour que chaque
+  système remplisse mieux l'écran en mode Jouer plutôt qu'une page entière en réduction. Si aucun
+  système n'est détecté, la page entière est gardée telle quelle (pas de perte de contenu).
 - Les 3 suggestions de l'onglet Suggestions restent des données fixes (issues du prototype de
   design) — un vrai moteur de recommandation basé sur la bibliothèque réelle reste à faire.

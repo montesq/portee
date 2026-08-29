@@ -39,7 +39,8 @@ import com.portee.app.ui.theme.Spacing
 @Composable
 fun PorteeApp(viewModel: PorteeViewModel = viewModel()) {
     val screen = viewModel.screen
-    val activity = LocalContext.current.findActivity()
+    val context = LocalContext.current
+    val activity = context.findActivity()
 
     DisposableEffect(screen is Screen.Practice) {
         val window = activity?.window
@@ -123,7 +124,8 @@ fun PorteeApp(viewModel: PorteeViewModel = viewModel()) {
                                 onPhotoTaken = viewModel::addPhoto,
                                 onRemovePhoto = viewModel::removePhoto,
                                 onPickLevel = viewModel::pickLevel,
-                                onSubmit = viewModel::submitAdd,
+                                onSubmit = { viewModel.submitAdd(context.applicationContext) },
+                                isSubmitting = viewModel.isSubmittingPiece,
                             )
                             Screen.Suggestions -> SuggestionsScreen(
                                 suggestions = viewModel.suggestions,

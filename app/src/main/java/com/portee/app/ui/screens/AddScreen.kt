@@ -61,9 +61,10 @@ fun AddScreen(
     onRemovePhoto: (String) -> Unit,
     onPickLevel: (Int) -> Unit,
     onSubmit: () -> Unit,
+    isSubmitting: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    val canSubmit = form.title.isNotBlank() && form.composer.isNotBlank() && form.importKind != null
+    val canSubmit = form.title.isNotBlank() && form.composer.isNotBlank() && form.importKind != null && !isSubmitting
     val activity = LocalContext.current.findActivity()
     var scanError by remember { mutableStateOf(false) }
 
@@ -173,7 +174,7 @@ fun AddScreen(
         }
 
         PrimaryButton(
-            text = "Ajouter à ma bibliothèque",
+            text = if (isSubmitting) "Traitement…" else "Ajouter à ma bibliothèque",
             onClick = onSubmit,
             enabled = canSubmit,
             fullWidth = true,
