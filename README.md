@@ -12,6 +12,8 @@ Recréée à partir d'un handoff de design (Claude Design, système "Nocturne") 
 
 - Kotlin, Jetpack Compose (Material 3), un seul module `app`
 - minSdk 26, compileSdk/targetSdk 35
+- Le scan de partition (import Photo) nécessite Google Play services (ML Kit Document Scanner) ;
+  quasi universel sur les téléphones grand public, absent sur certains émulateurs/AOSP
 - Pas de backend : les données sont en mémoire, remises à zéro à chaque lancement — la
   bibliothèque démarre vide, à remplir depuis l'onglet Ajouter
 
@@ -49,12 +51,14 @@ package `com.portee.app.update`). Ça suppose :
 - **Police** : Inter n'est pas embarquée, la police système (Roboto) est utilisée à la place.
 - **Persistance** : aucune base de données locale — à ajouter (Room, DataStore…) pour conserver
   la bibliothèque entre les sessions.
-- **Écoute / reconnaissance de jeu** : le mode "Jouer" tourne les pages sur un minuteur fixe ; il
-  n'y a pas encore d'analyse audio réelle du jeu au piano.
+- **Mode Jouer** : visionneuse portrait avec navigation manuelle (Précédent/Suivant) — pas
+  d'écoute ni de détection audio du jeu au piano pour tourner les pages automatiquement.
 - **Enregistrement** : le bouton d'enregistrement simule une prise (chronomètre + score de
   qualité aléatoire) ; l'enregistrement audio réel (MediaRecorder) reste à implémenter.
 - **Import PDF** : le bouton ne fait que marquer un import PDF simulé ; un vrai sélecteur de
-  fichiers et le rendu du PDF restent à faire. L'import **Photo**, lui, ouvre l'appareil photo
-  réel (une ou plusieurs pages) et les photos sont affichées dans la fiche détail et en mode Jouer.
+  fichiers et le rendu du PDF restent à faire. L'import **Photo**, lui, ouvre le
+  [scanner de documents ML Kit](https://developers.google.com/ml-kit/vision/doc-scanner)
+  (Google Play services) : détection automatique des bords de la page, recadrage et redressement,
+  avant d'ajouter la page scannée (une ou plusieurs) à la fiche détail et au mode Jouer.
 - Les 3 suggestions de l'onglet Suggestions restent des données fixes (issues du prototype de
   design) — un vrai moteur de recommandation basé sur la bibliothèque réelle reste à faire.

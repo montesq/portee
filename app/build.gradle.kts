@@ -68,5 +68,9 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.6")
     implementation("androidx.activity:activity-compose:1.9.2")
 
+    // Document Scanner: auto-detects the page edges, deskews and crops — replaces a plain
+    // camera photo (with table/background around it) with just the sheet music, upright.
+    implementation("com.google.android.gms:play-services-mlkit-document-scanner:16.0.0-beta1")
+
     debugImplementation("androidx.compose.ui:ui-tooling")
 }

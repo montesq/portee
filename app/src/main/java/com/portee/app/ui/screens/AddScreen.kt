@@ -1,9 +1,8 @@
 package com.portee.app.ui.screens
 
-import android.Manifest
-import android.content.pm.PackageManager
-import android.net.Uri
+import android.app.Activity
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -36,14 +35,16 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.ContextCompat
-import com.portee.app.camera.createScorePhotoUri
+import com.google.mlkit.vision.documentscanner.GmsDocumentScannerOptions
+import com.google.mlkit.vision.documentscanner.GmsDocumentScanning
+import com.google.mlkit.vision.documentscanner.GmsDocumentScanningResult
 import com.portee.app.camera.rememberDecodedBitmap
 import com.portee.app.data.AddForm
 import com.portee.app.data.ImportKind
 import com.portee.app.ui.components.ImportChoiceButton
 import com.portee.app.ui.components.PorteeTextField
 import com.portee.app.ui.components.PrimaryButton
+import com.portee.app.ui.findActivity
 import com.portee.app.ui.icons.PorteeIcons
 import com.portee.app.ui.theme.PorteeColors
 import com.portee.app.ui.theme.PorteeType
@@ -63,36 +64,31 @@ fun AddScreen(
     modifier: Modifier = Modifier,
 ) {
     val canSubmit = form.title.isNotBlank() && form.composer.isNotBlank() && form.importKind != null
-    val context = LocalContext.current
+    val activity = LocalContext.current.findActivity()
+    var scanError by remember { mutableStateOf(false) }
 
-    var pendingUri by remember { mutableStateOf<Uri?>(null) }
-    var permissionDenied by remember { mutableStateOf(false) }
-
-    val takePictureLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
-        val uri = pendingUri
-        if (success && uri != null) onPhotoTaken(uri.toString())
-        pendingUri = null
-    }
-
-    fun launchCamera() {
-        val uri = createScorePhotoUri(context)
-        pendingUri = uri
-        takePictureLauncher.launch(uri)
-    }
-
-    val cameraPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        permissionDenied = !granted
-        if (granted) launchCamera()
-    }
-
-    fun requestPhotoCapture() {
-        val granted = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
-        if (granted) {
-            permissionDenied = false
-            launchCamera()
-        } else {
-            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+    val scannerLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val scanResult = GmsDocumentScanningResult.fromActivityResultIntent(result.data)
+            scanResult?.pages?.forEach { page -> onPhotoTaken(page.imageUri.toString()) }
         }
+    }
+
+    fun startScan() {
+        val act = activity ?: return
+        scanError = false
+        val options = GmsDocumentScannerOptions.Builder()
+            .setGalleryImportAllowed(false)
+            .setPageLimit(10)
+            .setResultFormats(GmsDocumentScannerOptions.RESULT_FORMAT_JPEG)
+            .setScannerMode(GmsDocumentScannerOptions.SCANNER_MODE_FULL)
+            .build()
+        GmsDocumentScanning.getClient(options)
+            .getStartScanIntent(act)
+            .addOnSuccessListener { intentSender ->
+                scannerLauncher.launch(IntentSenderRequest.Builder(intentSender).build())
+            }
+            .addOnFailureListener { scanError = true }
     }
 
     Column(
@@ -120,7 +116,7 @@ fun AddScreen(
                     label = "Photo",
                     icon = PorteeIcons.Image,
                     selected = form.importKind == ImportKind.PHOTO,
-                    onClick = { requestPhotoCapture() },
+                    onClick = { startScan() },
                     modifier = Modifier.weight(1f),
                 )
             }
@@ -135,16 +131,16 @@ fun AddScreen(
             } else if (form.photoUris.isNotEmpty()) {
                 val count = form.photoUris.size
                 Text(
-                    "Importé · $count page${if (count > 1) "s" else ""} photographiée${if (count > 1) "s" else ""}",
+                    "Importé · $count page${if (count > 1) "s" else ""} numérisée${if (count > 1) "s" else ""}",
                     style = PorteeType.meta,
                     color = PorteeColors.accent300,
                     modifier = Modifier.padding(top = 8.dp),
                 )
             }
 
-            if (permissionDenied) {
+            if (scanError) {
                 Text(
-                    "Autorisation caméra refusée — active-la dans les paramètres de l'application.",
+                    "La numérisation a échoué. Réessaie.",
                     style = PorteeType.meta,
                     color = PorteeColors.recordRed,
                     modifier = Modifier.padding(top = 8.dp),
@@ -161,7 +157,7 @@ fun AddScreen(
                     form.photoUris.forEach { uri ->
                         PhotoThumbnail(uriString = uri, onRemove = { onRemovePhoto(uri) })
                     }
-                    AddAnotherPhotoTile(onClick = { requestPhotoCapture() })
+                    AddAnotherPhotoTile(onClick = { startScan() })
                 }
             }
         }
