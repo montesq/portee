@@ -12,7 +12,8 @@ Recréée à partir d'un handoff de design (Claude Design, système "Nocturne") 
 
 - Kotlin, Jetpack Compose (Material 3), un seul module `app`
 - minSdk 26, compileSdk/targetSdk 35
-- Pas de backend : les données sont en mémoire (`MockData`), remises à zéro à chaque lancement
+- Pas de backend : les données sont en mémoire, remises à zéro à chaque lancement — la
+  bibliothèque démarre vide, à remplir depuis l'onglet Ajouter
 
 ## Lancer le projet
 
@@ -26,6 +27,11 @@ En ligne de commande, une fois le wrapper généré (`gradle wrapper` si vous av
 ./gradlew assembleDebug
 ```
 
+Sans Android Studio ni Gradle local : chaque push sur `main` déclenche le workflow
+[`.github/workflows/android-build.yml`](.github/workflows/android-build.yml), qui compile un
+APK debug et le publie comme artefact du run (onglet *Actions* du repo) — à télécharger et
+installer directement sur un téléphone Android 8.0+.
+
 ## Limitations connues (prototype → produit réel)
 
 - **Police** : Inter n'est pas embarquée, la police système (Roboto) est utilisée à la place.
@@ -37,5 +43,5 @@ En ligne de commande, une fois le wrapper généré (`gradle wrapper` si vous av
   qualité aléatoire) ; l'enregistrement audio réel (MediaRecorder) reste à implémenter.
 - **Import PDF/Photo** : les boutons ne font que marquer un type d'import choisi ; l'intégration
   avec un sélecteur de fichiers/l'appareil photo et le rendu réel de la partition sont à faire.
-- Ce projet a été généré sans environnement Java/Gradle local pour compiler — à valider dans
-  Android Studio avant la première exécution.
+- Les 3 suggestions de l'onglet Suggestions restent des données fixes (issues du prototype de
+  design) — un vrai moteur de recommandation basé sur la bibliothèque réelle reste à faire.

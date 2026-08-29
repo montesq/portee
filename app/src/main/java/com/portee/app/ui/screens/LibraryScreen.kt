@@ -65,7 +65,11 @@ fun LibraryScreen(
 
         if (pieces.isEmpty()) {
             Text(
-                "Aucun morceau ne correspond à « $searchQuery ».",
+                if (searchQuery.isBlank()) {
+                    "Ta bibliothèque est vide. Ajoute ton premier morceau depuis l'onglet Ajouter."
+                } else {
+                    "Aucun morceau ne correspond à « $searchQuery »."
+                },
                 style = PorteeType.bodySmall,
                 color = PorteeColors.text.copy(alpha = 0.5f),
                 modifier = Modifier.padding(vertical = Spacing.space3),

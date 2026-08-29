@@ -30,7 +30,7 @@ sealed class Screen {
 
 class PorteeViewModel : ViewModel() {
 
-    var pieces by mutableStateOf(MockData.buildPieces())
+    var pieces by mutableStateOf(emptyList<Piece>())
         private set
 
     var screen by mutableStateOf<Screen>(Screen.Library)
