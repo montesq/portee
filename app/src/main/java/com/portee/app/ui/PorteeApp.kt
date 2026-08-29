@@ -103,7 +103,9 @@ fun PorteeApp(viewModel: PorteeViewModel = viewModel()) {
                                 form = viewModel.addForm,
                                 onTitleChange = viewModel::updateTitle,
                                 onComposerChange = viewModel::updateComposer,
-                                onPickImport = viewModel::pickImport,
+                                onPickPdf = viewModel::pickPdfImport,
+                                onPhotoTaken = viewModel::addPhoto,
+                                onRemovePhoto = viewModel::removePhoto,
                                 onPickLevel = viewModel::pickLevel,
                                 onSubmit = viewModel::submitAdd,
                             )

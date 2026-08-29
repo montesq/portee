@@ -33,4 +33,5 @@ data class AddForm(
     val level: Int = 3,
     val importKind: ImportKind? = null,
     val importName: String? = null,
+    val photoUris: List<String> = emptyList(),
 )

@@ -104,21 +104,41 @@ class PorteeViewModel : ViewModel() {
     fun updateTitle(value: String) { addForm = addForm.copy(title = value) }
     fun updateComposer(value: String) { addForm = addForm.copy(composer = value) }
     fun pickLevel(level: Int) { addForm = addForm.copy(level = level) }
-    fun pickImport(kind: ImportKind) {
-        val name = if (kind == ImportKind.PDF) "partition.pdf" else "photo_partition.jpg"
-        addForm = addForm.copy(importKind = kind, importName = name)
+
+    fun pickPdfImport() {
+        addForm = addForm.copy(importKind = ImportKind.PDF, importName = "partition.pdf", photoUris = emptyList())
+    }
+
+    fun addPhoto(uri: String) {
+        addForm = addForm.copy(
+            importKind = ImportKind.PHOTO,
+            importName = null,
+            photoUris = addForm.photoUris + uri,
+        )
+    }
+
+    fun removePhoto(uri: String) {
+        val remaining = addForm.photoUris - uri
+        addForm = addForm.copy(
+            photoUris = remaining,
+            importKind = if (remaining.isEmpty()) null else ImportKind.PHOTO,
+        )
     }
 
     fun submitAdd() {
         val f = addForm
         if (f.title.isBlank() || f.composer.isBlank() || f.importKind == null) return
+        val pages = when (f.importKind) {
+            ImportKind.PDF -> 3
+            ImportKind.PHOTO -> f.photoUris.size.coerceAtLeast(1)
+        }
         val piece = Piece(
             id = "p${System.currentTimeMillis()}",
             title = f.title.trim(),
             composer = f.composer.trim(),
             level = f.level,
             added = "Aujourd'hui",
-            pages = if (f.importKind == ImportKind.PDF) 3 else 1,
+            pages = pages,
             recordings = emptyList(),
         )
         pieces = listOf(piece) + pieces

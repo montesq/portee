@@ -1,25 +1,46 @@
 package com.portee.app.ui.screens
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
+import com.portee.app.camera.createScorePhotoUri
+import com.portee.app.camera.decodeSampledBitmap
 import com.portee.app.data.AddForm
 import com.portee.app.data.ImportKind
 import com.portee.app.ui.components.ImportChoiceButton
@@ -30,18 +51,53 @@ import com.portee.app.ui.theme.PorteeColors
 import com.portee.app.ui.theme.PorteeType
 import com.portee.app.ui.theme.Radius
 import com.portee.app.ui.theme.Spacing
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @Composable
 fun AddScreen(
     form: AddForm,
     onTitleChange: (String) -> Unit,
     onComposerChange: (String) -> Unit,
-    onPickImport: (ImportKind) -> Unit,
+    onPickPdf: () -> Unit,
+    onPhotoTaken: (String) -> Unit,
+    onRemovePhoto: (String) -> Unit,
     onPickLevel: (Int) -> Unit,
     onSubmit: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val canSubmit = form.title.isNotBlank() && form.composer.isNotBlank() && form.importKind != null
+    val context = LocalContext.current
+
+    var pendingUri by remember { mutableStateOf<Uri?>(null) }
+    var permissionDenied by remember { mutableStateOf(false) }
+
+    val takePictureLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
+        val uri = pendingUri
+        if (success && uri != null) onPhotoTaken(uri.toString())
+        pendingUri = null
+    }
+
+    fun launchCamera() {
+        val uri = createScorePhotoUri(context)
+        pendingUri = uri
+        takePictureLauncher.launch(uri)
+    }
+
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        permissionDenied = !granted
+        if (granted) launchCamera()
+    }
+
+    fun requestPhotoCapture() {
+        val granted = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+        if (granted) {
+            permissionDenied = false
+            launchCamera()
+        } else {
+            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+        }
+    }
 
     Column(
         modifier = modifier
@@ -61,24 +117,56 @@ fun AddScreen(
                     label = "PDF",
                     icon = PorteeIcons.Folder,
                     selected = form.importKind == ImportKind.PDF,
-                    onClick = { onPickImport(ImportKind.PDF) },
+                    onClick = onPickPdf,
                     modifier = Modifier.weight(1f),
                 )
                 ImportChoiceButton(
                     label = "Photo",
                     icon = PorteeIcons.Image,
                     selected = form.importKind == ImportKind.PHOTO,
-                    onClick = { onPickImport(ImportKind.PHOTO) },
+                    onClick = { requestPhotoCapture() },
                     modifier = Modifier.weight(1f),
                 )
             }
-            if (form.importKind != null) {
+
+            if (form.importKind == ImportKind.PDF) {
                 Text(
                     "Importé · ${form.importName}",
                     style = PorteeType.meta,
                     color = PorteeColors.accent300,
                     modifier = Modifier.padding(top = 8.dp),
                 )
+            } else if (form.photoUris.isNotEmpty()) {
+                val count = form.photoUris.size
+                Text(
+                    "Importé · $count page${if (count > 1) "s" else ""} photographiée${if (count > 1) "s" else ""}",
+                    style = PorteeType.meta,
+                    color = PorteeColors.accent300,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
+            }
+
+            if (permissionDenied) {
+                Text(
+                    "Autorisation caméra refusée — active-la dans les paramètres de l'application.",
+                    style = PorteeType.meta,
+                    color = PorteeColors.recordRed,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
+            }
+
+            if (form.photoUris.isNotEmpty()) {
+                Row(
+                    modifier = Modifier
+                        .padding(top = 10.dp)
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    form.photoUris.forEach { uri ->
+                        PhotoThumbnail(uriString = uri, onRemove = { onRemovePhoto(uri) })
+                    }
+                    AddAnotherPhotoTile(onClick = { requestPhotoCapture() })
+                }
             }
         }
 
@@ -98,6 +186,72 @@ fun AddScreen(
             enabled = canSubmit,
             fullWidth = true,
         )
+    }
+}
+
+@Composable
+private fun PhotoThumbnail(uriString: String, onRemove: () -> Unit) {
+    val context = LocalContext.current
+    val bitmapState = produceState<androidx.compose.ui.graphics.ImageBitmap?>(initialValue = null, uriString) {
+        value = withContext(Dispatchers.IO) {
+            decodeSampledBitmap(context, Uri.parse(uriString), 200)?.asImageBitmap()
+        }
+    }
+
+    Box(modifier = Modifier.size(64.dp)) {
+        val bitmap = bitmapState.value
+        if (bitmap != null) {
+            Image(
+                bitmap = bitmap,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(Radius.sm)),
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(Radius.sm))
+                    .background(PorteeColors.surface)
+                    .border(1.dp, PorteeColors.divider, RoundedCornerShape(Radius.sm)),
+            )
+        }
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(2.dp)
+                .size(18.dp)
+                .clip(CircleShape)
+                .background(PorteeColors.background.copy(alpha = 0.85f))
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = onRemove,
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text("×", style = PorteeType.bodySmall.copy(fontSize = 13.sp), color = PorteeColors.text)
+        }
+    }
+}
+
+@Composable
+private fun AddAnotherPhotoTile(onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(64.dp)
+            .clip(RoundedCornerShape(Radius.sm))
+            .border(1.dp, PorteeColors.divider, RoundedCornerShape(Radius.sm))
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onClick,
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text("+", style = PorteeType.dialogTitle, color = PorteeColors.text.copy(alpha = 0.6f))
     }
 }
 
