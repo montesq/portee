@@ -16,6 +16,18 @@ android {
         versionName = "1.0"
     }
 
+    signingConfigs {
+        getByName("debug") {
+            // Pinned so every build (CI or local) is signed with the same key — otherwise
+            // each CI run's ephemeral debug keystore would produce a different signature,
+            // and installing a newer build over an older one fails as a signature mismatch.
+            storeFile = rootProject.file("keystore/debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
