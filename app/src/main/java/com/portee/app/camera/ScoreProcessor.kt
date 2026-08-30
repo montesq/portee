@@ -14,16 +14,20 @@ import java.io.FileOutputStream
 private const val MAX_PROCESS_DIMENSION = 1600
 private const val CONTRAST_FACTOR = 1.35f
 private const val SHARPEN_AMOUNT = 0.25f
-private const val ROW_INK_THRESHOLD = 0.006f
+private const val INK_THRESHOLD = 0.006f
 private const val MIN_GAP_HEIGHT_FRACTION = 0.02f
 private const val MIN_SYSTEM_HEIGHT_FRACTION = 0.04f
-private const val SYSTEM_PADDING_FRACTION = 0.01f
+private const val CONTENT_PADDING_FRACTION = 0.01f
+private const val SYSTEMS_PER_GROUP = 2
 
-// Takes one scanned score page and turns it into one or more "system" images (one per line
-// of staves), enhanced for legibility. No OMR/note recognition involved — just a horizontal
-// ink-density profile to find the blank margins between systems, the same idea a document
-// layout analyzer uses to find text lines. Falls back to the whole page if nothing is detected,
-// so a piece never loses a page over a heuristic misfire.
+// Takes one scanned score page and turns it into one or more display images, enhanced for
+// legibility. No OMR/note recognition involved — just ink-density profiles (row-wise and
+// column-wise) to find the blank margins around the content and between systems, the same
+// idea a document layout analyzer uses to find text lines. A single system alone is a very
+// wide, short strip that leaves most of a tall phone screen empty when fit to it, so a few
+// consecutive systems are grouped into one image instead of cropping every line separately.
+// Falls back to the whole page if nothing is detected, so a page is never lost to a heuristic
+// misfire.
 fun processScorePage(context: Context, sourceUri: Uri): List<Uri> {
     val decoded = decodeSampledBitmap(context, sourceUri, MAX_PROCESS_DIMENSION) ?: return listOf(sourceUri)
     val contrasted = enhanceContrast(decoded)
@@ -31,10 +35,12 @@ fun processScorePage(context: Context, sourceUri: Uri): List<Uri> {
     val enhanced = sharpen(contrasted, SHARPEN_AMOUNT)
     if (enhanced !== contrasted) contrasted.recycle()
 
-    val bands = detectSystemBands(enhanced)
+    val (left, right) = detectContentColumns(enhanced)
+    val groups = detectSystemGroups(enhanced)
+
     val dir = File(context.cacheDir, "score_systems").apply { mkdirs() }
-    val uris = bands.mapIndexed { index, (startY, endY) ->
-        val crop = Bitmap.createBitmap(enhanced, 0, startY, enhanced.width, endY - startY)
+    val uris = groups.mapIndexed { index, (top, bottom) ->
+        val crop = Bitmap.createBitmap(enhanced, left, top, right - left, bottom - top)
         val file = File(dir, "system_${System.currentTimeMillis()}_$index.jpg")
         FileOutputStream(file).use { out -> crop.compress(Bitmap.CompressFormat.JPEG, 90, out) }
         crop.recycle()
@@ -98,50 +104,85 @@ private fun sharpenPixel(c: Int, up: Int, down: Int, left: Int, right: Int, cent
     return (0xFF shl 24) or (r shl 16) or (g shl 8) or b
 }
 
-private fun detectSystemBands(bitmap: Bitmap): List<Pair<Int, Int>> {
+private fun luminance(pixel: Int): Float {
+    val r = (pixel shr 16) and 0xFF
+    val g = (pixel shr 8) and 0xFF
+    val b = pixel and 0xFF
+    return r * 0.299f + g * 0.587f + b * 0.114f
+}
+
+// Finds the left/right bounds of the actual printed content, trimming the blank page margins
+// that a document scan still has on the sides (top/bottom margins are handled per-system below).
+private fun detectContentColumns(bitmap: Bitmap): Pair<Int, Int> {
     val w = bitmap.width
     val h = bitmap.height
-    val rowInk = FloatArray(h)
+    val col = IntArray(h)
+    val colInk = FloatArray(w)
+    for (x in 0 until w) {
+        bitmap.getPixels(col, 0, 1, x, 0, 1, h)
+        var dark = 0
+        for (y in 0 until h) {
+            if (luminance(col[y]) < 180f) dark++
+        }
+        colInk[x] = dark.toFloat() / h
+    }
+
+    var left = 0
+    while (left < w - 1 && colInk[left] <= INK_THRESHOLD) left++
+    var right = w - 1
+    while (right > left && colInk[right] <= INK_THRESHOLD) right--
+
+    if (right <= left) return 0 to w
+
+    val padding = (w * CONTENT_PADDING_FRACTION).toInt().coerceAtLeast(2)
+    return (left - padding).coerceAtLeast(0) to (right + padding).coerceAtMost(w - 1)
+}
+
+// Finds individual system row-ranges via a row-wise ink profile, then groups SYSTEMS_PER_GROUP
+// consecutive systems into one display image — a single system alone is too short relative to
+// the page width to fill a tall phone screen once scaled to fit.
+private fun detectSystemGroups(bitmap: Bitmap): List<Pair<Int, Int>> {
+    val w = bitmap.width
+    val h = bitmap.height
     val row = IntArray(w)
+    val rowInk = FloatArray(h)
     for (y in 0 until h) {
         bitmap.getPixels(row, 0, w, 0, y, w, 1)
         var dark = 0
         for (x in 0 until w) {
-            val p = row[x]
-            val r = (p shr 16) and 0xFF
-            val g = (p shr 8) and 0xFF
-            val b = p and 0xFF
-            val luminance = r * 0.299f + g * 0.587f + b * 0.114f
-            if (luminance < 180f) dark++
+            if (luminance(row[x]) < 180f) dark++
         }
         rowInk[y] = dark.toFloat() / w
     }
 
     val minGapRows = (h * MIN_GAP_HEIGHT_FRACTION).toInt().coerceAtLeast(3)
-    val bands = mutableListOf<Pair<Int, Int>>()
+    val systems = mutableListOf<Pair<Int, Int>>()
     var contentStart = -1
     var lastContentRow = -1
     var gapRun = 0
 
     for (y in 0 until h) {
-        if (rowInk[y] > ROW_INK_THRESHOLD) {
+        if (rowInk[y] > INK_THRESHOLD) {
             if (contentStart == -1) contentStart = y
             lastContentRow = y
             gapRun = 0
         } else if (contentStart != -1) {
             gapRun++
             if (gapRun >= minGapRows) {
-                bands += contentStart to lastContentRow
+                systems += contentStart to lastContentRow
                 contentStart = -1
             }
         }
     }
-    if (contentStart != -1) bands += contentStart to lastContentRow
+    if (contentStart != -1) systems += contentStart to lastContentRow
+    if (systems.isEmpty()) return emptyList()
 
-    val padding = (h * SYSTEM_PADDING_FRACTION).toInt().coerceAtLeast(2)
+    val padding = (h * CONTENT_PADDING_FRACTION).toInt().coerceAtLeast(2)
     val minHeight = (h * MIN_SYSTEM_HEIGHT_FRACTION).toInt()
 
-    return bands
+    return systems
+        .chunked(SYSTEMS_PER_GROUP)
+        .map { group -> group.first().first to group.last().second }
         .map { (start, end) -> (start - padding).coerceAtLeast(0) to (end + padding).coerceAtMost(h - 1) }
         .filter { (start, end) -> end - start >= minHeight }
 }
